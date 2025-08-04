@@ -34,6 +34,9 @@ typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
 
+  int win_width;
+  int win_height;
+
   Uint64 last_time_ms;
   std::unique_ptr<particle::world> world;
 } app_ctx_t;
@@ -77,7 +80,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   // Change the blening mode to blend (for alpha value of colors to have an
   // effect when rending stuff)
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-  auto world = std::make_unique<particle::world>();
+  int win_width, win_height;
+  SDL_GetRenderOutputSize(renderer, &win_width, &win_height);
+  auto world = std::make_unique<particle::world>(win_width, win_height-20);
 
   // // DEBUG
   // int win_width, win_height;
@@ -116,9 +121,10 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     case SDL_SCANCODE_SPACE: // press spacebar to render particles
     {
       // default particles would be rendered in the center of the screen
-      int win_width, win_height;
-      SDL_GetRenderOutputSize(app_ctx->renderer, &win_width, &win_height);
-      particle::coords_t location = {win_width / 2.0f, win_height / 2.0f};
+      SDL_GetRenderOutputSize(app_ctx->renderer, &app_ctx->win_width,
+                              &app_ctx->win_height);
+      particle::coords_t location = {app_ctx->win_width / 2.0f,
+                                     app_ctx->win_height / 2.0f};
       constexpr int particle_count = 100;
       std::vector<particle::coords_t> locations(particle_count, location);
       app_ctx->world->spawn_particles(particle_count, locations);
