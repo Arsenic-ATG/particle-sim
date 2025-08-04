@@ -10,6 +10,8 @@
  */
 
 #define SDL_MAIN_USE_CALLBACKS 1
+
+#include "particle.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
@@ -31,6 +33,9 @@ constexpr int default_win_height = 650;
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
+
+  Uint64 last_time_ms;
+  std::unique_ptr<particle::world> world;
 } app_ctx_t;
 
 /**
@@ -50,9 +55,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   }
 
   /* === Handle Window === */
-  SDL_Window *window =
-      SDL_CreateWindow("part", default_win_width, default_win_height,
-                       SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE);
+  SDL_Window *window = SDL_CreateWindow(
+      "part", default_win_width, default_win_height, SDL_WINDOW_RESIZABLE);
   if (!window) {
     SDL_Log("Couldn't Create Window : %s", SDL_GetError());
     return SDL_APP_FAILURE;
@@ -73,8 +77,21 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   // Change the blening mode to blend (for alpha value of colors to have an
   // effect when rending stuff)
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+  auto world = std::make_unique<particle::world>();
 
-  *appstate = new app_ctx_t{.window = window, .renderer = renderer};
+  // // DEBUG
+  // int win_width, win_height;
+  // SDL_GetRenderOutputSize(renderer, &win_width, &win_height);
+  // particle::coords_t location = {win_width / 2.0f, win_height / 2.0f};
+  // constexpr int particle_count = 1;
+  // std::vector<particle::coords_t> locations(particle_count, location);
+  // world->spawn_particles(particle_count, locations);
+  // // DEBUG-END
+
+  *appstate = new app_ctx_t{.window = window,
+                            .renderer = renderer,
+                            .last_time_ms = SDL_GetTicks(),
+                            .world = std::move(world)};
 
   return SDL_APP_CONTINUE;
 }
@@ -96,6 +113,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     case SDL_SCANCODE_ESCAPE:
       return SDL_APP_SUCCESS;
       break;
+    case SDL_SCANCODE_SPACE: // press spacebar to render particles
+    {
+      // default particles would be rendered in the center of the screen
+      int win_width, win_height;
+      SDL_GetRenderOutputSize(app_ctx->renderer, &win_width, &win_height);
+      particle::coords_t location = {win_width / 2.0f, win_height / 2.0f};
+      constexpr int particle_count = 100;
+      std::vector<particle::coords_t> locations(particle_count, location);
+      app_ctx->world->spawn_particles(particle_count, locations);
+    } break;
     default: {
     }
     }
@@ -115,11 +142,33 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 SDL_AppResult SDL_AppIterate(void *appstate) {
   app_ctx_t *app_ctx = static_cast<app_ctx_t *>(appstate);
 
-  /* draw background*/
+  //------- Update World
+  auto now = SDL_GetTicks();
+  double time_elapsed = (now - app_ctx->last_time_ms) / 1000.0f;
+  // float time_elapsed = (now - app_ctx->last_time_ms) * 1.0f;
+  app_ctx->world->update(time_elapsed);
+
+  //------- Render stuff
+  /* Draw Background*/
   SDL_SetRenderDrawColor(app_ctx->renderer, 46, 52, 64,
                          SDL_ALPHA_OPAQUE); /* #2e3440 */
   SDL_RenderClear(app_ctx->renderer);
+
+  /* Draw particles */
+  auto particles_buffer = app_ctx->world->get_particles_buffer();
+  std::vector<SDL_FPoint> pointbuffer(particles_buffer->size());
+  for (auto i = 0u; i < particles_buffer->size(); ++i) {
+    pointbuffer[i] = {(*particles_buffer)[i]->location.x,
+                      (*particles_buffer)[i]->location.y};
+  }
+  SDL_SetRenderDrawColor(app_ctx->renderer, 255, 255, 255,
+                         SDL_ALPHA_OPAQUE); /* #2e3440 */
+
+  SDL_RenderPoints(app_ctx->renderer, pointbuffer.data(), pointbuffer.size());
   SDL_RenderPresent(app_ctx->renderer);
+
+  app_ctx->last_time_ms = now;
+  SDL_Delay(60);
   return SDL_APP_CONTINUE;
 }
 
