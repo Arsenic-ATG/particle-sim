@@ -82,7 +82,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
   int win_width, win_height;
   SDL_GetRenderOutputSize(renderer, &win_width, &win_height);
-  auto world = std::make_unique<particle::world>(win_width, win_height-20);
+  auto world = std::make_unique<particle::world>(win_width, win_height - 20);
 
   // // DEBUG
   // int win_width, win_height;
@@ -95,6 +95,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   *appstate = new app_ctx_t{.window = window,
                             .renderer = renderer,
+                            .win_width = win_width,
+                            .win_height = win_height,
                             .last_time_ms = SDL_GetTicks(),
                             .world = std::move(world)};
 
@@ -112,8 +114,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   app_ctx_t *app_ctx = static_cast<app_ctx_t *>(appstate);
   if (event->type == SDL_EVENT_QUIT)
     return SDL_APP_SUCCESS;
+  // handle all the parameters when the window resizes
+  else if (event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ||
+           event->type == SDL_EVENT_WINDOW_RESIZED) {
 
-  else if (event->type == SDL_EVENT_KEY_DOWN) {
+    // this will change the values of dimentions to updated ones
+    SDL_GetRenderOutputSize(app_ctx->renderer, &app_ctx->win_width,
+                            &app_ctx->win_height);
+    app_ctx->world->update_worldbounds(app_ctx->win_width,
+                                       app_ctx->win_height - 20);
+  } else if (event->type == SDL_EVENT_KEY_DOWN) {
     switch (event->key.scancode) {
     case SDL_SCANCODE_ESCAPE:
       return SDL_APP_SUCCESS;

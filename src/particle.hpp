@@ -23,7 +23,7 @@ typedef struct {
 // NOTE: everything in this world is in cm/second (to make the calculation
 // easier)
 class world {
-  const int width, height;
+  int width, height;
 
   // Maximum life allowed of each particle before it despawns in seconds
   const double max_life_s;
@@ -47,6 +47,8 @@ public:
   // geters
   auto get_particles_buffer() const { return &particles_buffer; }
 
+  auto update_worldbounds(const int new_width, const int new_height) -> void;
+
   auto generate_particle(const coords_t location)
       -> std::unique_ptr<particle_t>;
   auto generate_random_particle(const coords_t location)
@@ -54,7 +56,8 @@ public:
   auto spawn_particles(const unsigned int particle_count,
                        const std::vector<coords_t> location_vector) -> bool;
 
-
+  auto collision(std::vector<std::unique_ptr<particle_t>>::iterator particle_it)
+      -> bool;
   auto update(const double time_elabsed_ms) -> void;
 };
 

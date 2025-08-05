@@ -5,6 +5,11 @@
 
 using namespace particle;
 
+void world::update_worldbounds(const int new_width, const int new_height) {
+  width = new_width;
+  height = new_height;
+}
+
 std::unique_ptr<particle_t>
 world::generate_random_particle(const coords_t location) {
   // Use a high-resolution clock for a more unique seed
@@ -43,6 +48,38 @@ bool world::spawn_particles(const unsigned int particle_count,
   return false;
 }
 
+bool world::collision(
+    std::vector<std::unique_ptr<particle_t>>::iterator particle_it) {
+
+  bool collision_happened = false;
+  // loss in energy ( velocity would be reduced by the factor of LOSS)
+  const double loss = 0.5;
+
+  // collision with the floor
+  if ((*particle_it)->location.y >= height) {
+    collision_happened = true;
+    (*particle_it)->location.y = height;
+    (*particle_it)->velocity.y *= -1;
+
+    (*particle_it)->velocity.y =
+        static_cast<int>((*particle_it)->velocity.y * loss);
+    (*particle_it)->velocity.x =
+        static_cast<int>((*particle_it)->velocity.x * loss);
+  }
+  // collision with the walls
+  else if ((*particle_it)->location.x >= width) {
+    collision_happened = true;
+    (*particle_it)->location.x = width;
+    (*particle_it)->velocity.x *= -1;
+  } else if ((*particle_it)->location.x <= 0) {
+    collision_happened = true;
+    (*particle_it)->location.x = 0;
+    (*particle_it)->velocity.x *= -1;
+  }
+
+  return collision_happened;
+}
+
 void world::update(const double time_elapsed_s) {
   // update location of every particle
   for (auto curr_particle = particles_buffer.begin();
@@ -56,15 +93,10 @@ void world::update(const double time_elapsed_s) {
       (*curr_particle)->location.x += distance_x;
       (*curr_particle)->location.y += distance_y;
 
-      // update the final velocity (v = u + gt)
-      (*curr_particle)->velocity.y += (g * time_elapsed_s);
-
-      // check for collision
-      if ((*curr_particle)->location.y >= height)
-        {
-          (*curr_particle)->location.y = height;
-          (*curr_particle)->velocity = {0,0};
-        }
+      if (!collision(curr_particle)) {
+        // update the final velocity (v = u + gt)
+        (*curr_particle)->velocity.y += (g * time_elapsed_s);
+      }
 
       // update the life of the particles
       (*curr_particle)->life -= time_elapsed_s;
