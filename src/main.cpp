@@ -142,6 +142,12 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     default: {
     }
     }
+  } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+    particle::coords_t location;
+    SDL_GetMouseState(&location.x, &location.y);
+    constexpr int particle_count = 100;
+    std::vector<particle::coords_t> locations(particle_count, location);
+    app_ctx->world->spawn_particles(particle_count, locations);
   }
   return SDL_APP_CONTINUE;
 }
