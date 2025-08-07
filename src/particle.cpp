@@ -16,7 +16,7 @@ world::generate_random_particle(const coords_t location) {
   std::default_random_engine generator(
       std::chrono::high_resolution_clock::now().time_since_epoch().count());
   // Create a uniform real distribution for the desired range
-  std::uniform_real_distribution<double> life_distribution(1, max_life_s),
+  std::uniform_real_distribution<double> life_distribution(0.01, max_life_s),
       speed_distribution(-1 * max_speed_cms, max_speed_cms);
 
   // reducing the individual velocity of each component as to make sure the

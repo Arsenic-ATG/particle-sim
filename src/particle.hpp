@@ -37,7 +37,7 @@ class world {
   std::vector<std::unique_ptr<particle_t>> particles_buffer;
 
 public:
-  world(const int width, const int height, const double max_life_s = 10,
+  world(const int width, const int height, const double max_life_s = 0.3,
         const int max_particles_count = 1000, const double max_speed_cms = 1000,
         const double g = 980)
       : width(width), height(height), max_life_s(max_life_s),

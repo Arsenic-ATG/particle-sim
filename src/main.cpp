@@ -84,9 +84,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   /* ===  Handle Texture === */
 
-  auto surface = IMG_Load("./assets/circle_01.png");
-  int texture_w = surface->w;
-  int texture_h = surface->h;
+  auto surface = IMG_Load("./assets/star/star_07.png");
+  int texture_w = 0.3 * surface->w;
+  int texture_h = 0.3 * surface->h;
   auto texture = SDL_CreateTextureFromSurface(renderer, surface);
   if (!texture) {
     SDL_Log("Couldn't Create Texture : %s", SDL_GetError());
@@ -156,7 +156,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                               &app_ctx->win_height);
       particle::coords_t location = {app_ctx->win_width / 2.0f,
                                      app_ctx->win_height / 2.0f};
-      constexpr int particle_count = 10;
+      constexpr int particle_count = 100;
       std::vector<particle::coords_t> locations(particle_count, location);
       app_ctx->world->spawn_particles(particle_count, locations);
     } break;
@@ -198,6 +198,7 @@ void draw_particles(const app_ctx_t *app_ctx) {
                                        (*particles_buffer)[i]->location, scale);
     Uint8 alpha = scale * 255;
     SDL_SetTextureAlphaMod(app_ctx->texture, alpha);
+    SDL_SetTextureColorMod(app_ctx->texture, 255, 255, 0);
     SDL_RenderTexture(app_ctx->renderer, app_ctx->texture, NULL, &rect);
   }
 }
