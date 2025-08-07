@@ -38,7 +38,7 @@ class world {
 
 public:
   world(const int width, const int height, const double max_life_s = 10,
-        const int max_particles_count = 1000, const double max_speed_cms = 700,
+        const int max_particles_count = 1000, const double max_speed_cms = 1000,
         const double g = 980)
       : width(width), height(height), max_life_s(max_life_s),
         max_speed_cms(max_speed_cms), max_particles_count(max_particles_count),
@@ -46,7 +46,8 @@ public:
 
   // geters
   auto get_particles_buffer() const { return &particles_buffer; }
-
+  auto get_max_life_s() const { return max_life_s; }
+  
   auto update_worldbounds(const int new_width, const int new_height) -> void;
 
   auto generate_particle(const coords_t location)
@@ -56,6 +57,7 @@ public:
   auto spawn_particles(const unsigned int particle_count,
                        const std::vector<coords_t> location_vector) -> bool;
 
+  // operations on each and every particle
   auto collision(std::vector<std::unique_ptr<particle_t>>::iterator particle_it)
       -> bool;
   auto update(const double time_elabsed_ms) -> void;

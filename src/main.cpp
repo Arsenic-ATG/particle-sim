@@ -14,6 +14,7 @@
 #include "particle.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h>
 
 /**
  * Defaults (ignore later when the window resizes)
@@ -33,6 +34,10 @@ constexpr int default_win_height = 650;
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
+  SDL_Texture *texture;
+
+  int texture_w;
+  int texture_h;
 
   int win_width;
   int win_height;
@@ -77,6 +82,19 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     return SDL_APP_FAILURE;
   }
 
+  /* ===  Handle Texture === */
+
+  auto surface = IMG_Load("./assets/circle_01.png");
+  int texture_w = surface->w;
+  int texture_h = surface->h;
+  auto texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_Log("Couldn't Create Texture : %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+
+  SDL_DestroySurface(surface);
+
   // Change the blening mode to blend (for alpha value of colors to have an
   // effect when rending stuff)
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -95,6 +113,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   *appstate = new app_ctx_t{.window = window,
                             .renderer = renderer,
+                            .texture = texture,
+                            .texture_w = texture_w,
+                            .texture_h = texture_h,
                             .win_width = win_width,
                             .win_height = win_height,
                             .last_time_ms = SDL_GetTicks(),
@@ -135,7 +156,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                               &app_ctx->win_height);
       particle::coords_t location = {app_ctx->win_width / 2.0f,
                                      app_ctx->win_height / 2.0f};
-      constexpr int particle_count = 100;
+      constexpr int particle_count = 10;
       std::vector<particle::coords_t> locations(particle_count, location);
       app_ctx->world->spawn_particles(particle_count, locations);
     } break;
@@ -145,11 +166,40 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
     particle::coords_t location;
     SDL_GetMouseState(&location.x, &location.y);
-    constexpr int particle_count = 100;
+    constexpr int particle_count = 10;
     std::vector<particle::coords_t> locations(particle_count, location);
     app_ctx->world->spawn_particles(particle_count, locations);
   }
   return SDL_APP_CONTINUE;
+}
+
+SDL_FRect get_bounding_rectangle(const app_ctx_t *app_ctx,
+                                 const particle::coords_t center,
+                                 const float scale = 1) {
+  float height = (app_ctx->texture_h * (scale));
+  float width = (app_ctx->texture_w * (scale));
+
+  return SDL_FRect{
+      .x = center.x - (width / 2.0f),
+      .y = center.y - (height / 2.0f),
+      .w = width,
+      .h = height,
+  };
+}
+
+void draw_particles(const app_ctx_t *app_ctx) {
+  auto particles_buffer = app_ctx->world->get_particles_buffer();
+  const auto max_life = app_ctx->world->get_max_life_s();
+  for (auto i = 0u; i < particles_buffer->size(); ++i) {
+    const auto life = (*particles_buffer)[i]->life;
+    // scale with the percentage life remaining
+    const auto scale = (life / max_life);
+    auto rect = get_bounding_rectangle(app_ctx,
+                                       (*particles_buffer)[i]->location, scale);
+    Uint8 alpha = scale * 255;
+    SDL_SetTextureAlphaMod(app_ctx->texture, alpha);
+    SDL_RenderTexture(app_ctx->renderer, app_ctx->texture, NULL, &rect);
+  }
 }
 
 /**
@@ -164,29 +214,21 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 SDL_AppResult SDL_AppIterate(void *appstate) {
   app_ctx_t *app_ctx = static_cast<app_ctx_t *>(appstate);
 
-  //------- Update World
+  //------- Update World -----------
   auto now = SDL_GetTicks();
   double time_elapsed = (now - app_ctx->last_time_ms) / 1000.0f;
   // float time_elapsed = (now - app_ctx->last_time_ms) * 1.0f;
   app_ctx->world->update(time_elapsed);
 
-  //------- Render stuff
-  /* Draw Background*/
+  //------- Render stuff -----------
+  /* Draw Background */
   SDL_SetRenderDrawColor(app_ctx->renderer, 46, 52, 64,
                          SDL_ALPHA_OPAQUE); /* #2e3440 */
   SDL_RenderClear(app_ctx->renderer);
 
   /* Draw particles */
-  auto particles_buffer = app_ctx->world->get_particles_buffer();
-  std::vector<SDL_FPoint> pointbuffer(particles_buffer->size());
-  for (auto i = 0u; i < particles_buffer->size(); ++i) {
-    pointbuffer[i] = {(*particles_buffer)[i]->location.x,
-                      (*particles_buffer)[i]->location.y};
-  }
-  SDL_SetRenderDrawColor(app_ctx->renderer, 255, 255, 255,
-                         SDL_ALPHA_OPAQUE); /* #2e3440 */
+  draw_particles(app_ctx);
 
-  SDL_RenderPoints(app_ctx->renderer, pointbuffer.data(), pointbuffer.size());
   SDL_RenderPresent(app_ctx->renderer);
 
   app_ctx->last_time_ms = now;

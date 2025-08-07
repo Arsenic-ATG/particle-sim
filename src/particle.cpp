@@ -52,7 +52,7 @@ bool world::collision(
     std::vector<std::unique_ptr<particle_t>>::iterator particle_it) {
 
   bool collision_happened = false;
-  // loss in energy ( velocity would be reduced by the factor of LOSS)
+  // loss in energy (velocity would be reduced by the factor of LOSS)
   const double loss = 0.5;
 
   // collision with the floor
@@ -66,7 +66,8 @@ bool world::collision(
     (*particle_it)->velocity.x =
         static_cast<int>((*particle_it)->velocity.x * loss);
   }
-  // collision with the walls
+  // collision with the walls ( collision from the walls would be elastic in
+  // nature ) idk why but it looks visually better
   else if ((*particle_it)->location.x >= width) {
     collision_happened = true;
     (*particle_it)->location.x = width;
